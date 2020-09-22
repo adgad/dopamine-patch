@@ -1,0 +1,14 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/messages_header">
+        <SeekBarPreference
+            app:key="frequency"
+            app:title="How many notifications a day"
+            app:summary="Summary."
+            app:min="0"
+            app:max="200"
+            app:defaultValue="10"
+            app:showSeekBarValue="true"/>    </PreferenceCategory>
+
+
+</PreferenceScreen>

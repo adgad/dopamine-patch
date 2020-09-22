@@ -15,6 +15,7 @@ public class NotificationPublisher extends BroadcastReceiver {
 
     public void onReceive(Context context, Intent intent) {
 
+        DopeBuilder dopeBuilder = new DopeBuilder(context);
         NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 
 // === Removed some obsoletes
@@ -30,6 +31,7 @@ public class NotificationPublisher extends BroadcastReceiver {
         Notification notification = intent.getParcelableExtra(NOTIFICATION);
         int id = intent.getIntExtra(NOTIFICATION_ID, 0);
         notificationManager.notify(id, notification);
+        dopeBuilder.sendDopamineHit();
 
     }
 }
