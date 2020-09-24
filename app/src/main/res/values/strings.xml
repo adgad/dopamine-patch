@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Dopamine</string>
+    <string name="app_name">Dopamine Patch</string>
     <string name="action_settings">Settings</string>
-    <string name="title_activity_settings">Dopamine Patch Settings</string>
+    <string name="title_activity_settings">Dopamine Patch</string>
 
     <!-- Preference Titles -->
     <string name="messages_header">Frequency</string>

@@ -1,12 +1,37 @@
 <resources>
     <!-- Reply Preference -->
-    <string-array name="reply_entries">
-        <item>Reply</item>
-        <item>Reply to all</item>
+    <string-array name="image_replies">
+        <item>Wow!</item>
+        <item>🔥</item>
+        <item>😍</item>
+        <item>Cool picture!</item>
+        <item>This looks amazing!</item>
+        <item>You look great!!</item>
+        <item>Absolutely stunning!</item>
+        <item>Gorgeous!!</item>
+        <item>Beautiful 😍</item>
+        <item>Keep doing this! Amazing. Go you lovely xoxo</item>
+        <item>Love thissss 🙌🙌🙌</item>
+        <item>check ur dms</item>
+        <item>YASSS KWEEN</item>
+        <item>Incredible</item>
+        <item>Great photo, hit me up for a collab</item>
     </string-array>
 
-    <string-array name="reply_values">
-        <item>reply</item>
-        <item>reply_all</item>
+    <string-array name="text_replies">
+        <item>You win the internet today</item>
+        <item>🔥</item>
+        <item>😍</item>
+        <item>This just made my week!</item>
+        <item>What a lovely post!</item>
+        <item>Excellent!!</item>
+        <item>Congratulations 🙂</item>
+        <item>Thank you so much for this.</item>
+        <item>I wish I was as funny as you</item>
+        <item>This is awesome!!</item>
+        <item>Good luck 🙌</item>
+        <item>You can do this 🙌</item>
+        <item>You\'re the best</item>
+        <item>This was a great post</item>
     </string-array>
 </resources>
