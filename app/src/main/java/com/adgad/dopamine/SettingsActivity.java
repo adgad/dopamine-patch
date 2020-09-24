@@ -32,7 +32,7 @@ public class SettingsActivity extends AppCompatActivity implements ActivityCompa
                 .commit();
         if(checkPermissions()) {
             DopeBuilder dopeBuilder = new DopeBuilder(this);
-            dopeBuilder.sendDopamineHit();
+            dopeBuilder.sendDopamineHit(600000);
         }
     }
 
@@ -67,7 +67,7 @@ public class SettingsActivity extends AppCompatActivity implements ActivityCompa
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if(checkPermissions()) {
                     DopeBuilder dopeBuilder = new DopeBuilder(this);
-                    dopeBuilder.sendDopamineHit();
+                    dopeBuilder.sendDopamineHit(600000);
                 }
             }
             return;

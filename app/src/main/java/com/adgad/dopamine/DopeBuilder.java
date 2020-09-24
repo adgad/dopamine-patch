@@ -44,7 +44,7 @@ public class DopeBuilder {
             getBucketId(CAMERA_IMAGE_BUCKET_NAME);
 
     private static final String[] NOTIFICATION_TYPES = new String[]{
-        "tweet_like", "post_like", "image_like", "tweet_reply", "post_reply", "image_reply"
+        "like", "retweet", "image_like", "tweet_reply", "post_reply", "image_reply"
     };
 
     String[] instaReplies;
@@ -68,14 +68,21 @@ public class DopeBuilder {
     public void sendDopamineHit() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         int frequency = preferences.getInt("frequency", 20);
+        String latestPost = preferences.getString("latestPost", null);
 
         String[] contact = this.getRandomContact();
         int delay = generator.nextInt(ONE_DAY / frequency);
         Log.d("dopamine", frequency + " " + delay);
 
-        this.scheduleNotification(this.getNotification(contact[0], contact[1]), delay);
+        this.scheduleNotification(this.getNotification(contact[0], contact[1], latestPost), delay);
     }
 
+    public void sendDopamineHit(int delay) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String latestPost = preferences.getString("latestPost", null);
+        String[] contact = this.getRandomContact();
+        this.scheduleNotification(this.getNotification(contact[0], contact[1], latestPost), delay);
+    }
 
     private Bitmap getRecentImage() {
             final String[] projection = { MediaStore.Images.Media.DATA };
@@ -129,7 +136,7 @@ public class DopeBuilder {
     private void scheduleNotification(Notification notification, int delay) {
 
         Intent notificationIntent = new Intent(this.context, NotificationPublisher.class);
-        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_ID, 1);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_ID, this.generator.nextInt(100));
         notificationIntent.putExtra(NotificationPublisher.NOTIFICATION, notification);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this.context, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -140,7 +147,7 @@ public class DopeBuilder {
     }
 
 
-    private Notification getNotification(String name, String userImage) {
+    private Notification getNotification(String name, String userImage, String latestPost) {
 
         String type = NOTIFICATION_TYPES[this.generator.nextInt(NOTIFICATION_TYPES.length)];
         Notification.Builder builder = new Notification.Builder(this.context);
@@ -151,49 +158,60 @@ public class DopeBuilder {
             actor += " and " + others + " others";
         }
         switch(type) {
-            case "tweet_like":
-                builder.setContentTitle("Twitter");
+            case "like":
+                builder.setContentTitle(actor);
                 builder.setSmallIcon(R.drawable.ic_favorite);
 
-                builder.setContentText(actor + " liked your tweet");
+                if(latestPost != null && !latestPost.isEmpty()) {
+                    builder.setStyle(new Notification.BigTextStyle()
+                            .bigText("Liked: " + latestPost));
+                } else {
+                    builder.setContentText("liked your tweet");
+                }
                 break;
-            case "post_like":
-                builder.setContentTitle("Facebook");
+            case "retweet":
+                builder.setContentTitle(actor);
                 builder.setSmallIcon(R.drawable.ic_favorite);
 
-                builder.setContentText(actor + " liked your post");
+                if(latestPost != null && !latestPost.isEmpty()) {
+                    builder.setStyle(new Notification.BigTextStyle()
+                            .bigText("RT: " + latestPost));
+                }
+                builder.setContentText("retweeted your tweet");
                 break;
             case "image_like":
-                builder.setContentTitle("Instagram");
+                builder.setContentTitle(actor);
+                builder.setContentText("liked your photo");
                 builder.setSmallIcon(R.drawable.ic_favorite);
-
-                builder.setContentText(actor + " liked your photo");
                 break;
             case "tweet_reply":
-                builder.setContentTitle("Twitter");
+                builder.setContentTitle(name);
                 builder.setSmallIcon(R.drawable.comment);
 
-                text = actor + " replied to your tweet: "  + tweetReplies[this.generator.nextInt(tweetReplies.length)];
+                text =  "replied to your tweet: "  + tweetReplies[this.generator.nextInt(tweetReplies.length)];
                 builder.setStyle(new Notification.BigTextStyle()
                         .bigText(text));
                 builder.setContentText(text);
                 break;
             case "post_reply":
-                builder.setContentTitle("Facebook");
+                builder.setContentTitle(actor);
                 builder.setSmallIcon(R.drawable.comment);
 
-                text = actor + " commented on your post: "  + tweetReplies[this.generator.nextInt(tweetReplies.length)];
+                text = "commented: "  + tweetReplies[this.generator.nextInt(tweetReplies.length)];
                 builder.setStyle(new Notification.BigTextStyle()
                         .bigText(text));
                 builder.setContentText(text);
                 break;
             case "image_reply":
-                builder.setContentTitle("Instagram");
+
+                builder.setContentTitle(name);
                 builder.setSmallIcon(R.drawable.comment);
-                builder.setContentText(name + " commented on your photo: " + instaReplies[this.generator.nextInt(instaReplies.length)]);
+                text = "commented: "  + instaReplies[this.generator.nextInt(instaReplies.length)];
+                builder.setStyle(new Notification.BigTextStyle()
+                        .bigText(text));
+                builder.setContentText(text);
                 break;
         }
-        builder.setSmallIcon(R.drawable.ic_favorite);
 
         if(userImage != null) {
             Uri imageUri = Uri.parse(userImage);
