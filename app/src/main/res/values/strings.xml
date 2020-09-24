@@ -4,7 +4,8 @@
     <string name="title_activity_settings">Dopamine Patch</string>
 
     <!-- Preference Titles -->
-    <string name="messages_header">Frequency</string>
+    <string name="messages_header">Settings</string>
 
-
+    <string-array name="pref_calendar_list_default">
+    </string-array>
 </resources>

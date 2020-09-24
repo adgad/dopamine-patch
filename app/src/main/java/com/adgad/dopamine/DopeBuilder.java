@@ -25,7 +25,9 @@ import androidx.preference.PreferenceManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import static java.util.Map.entry;
 
@@ -121,15 +123,29 @@ public class DopeBuilder {
 
     private String[] getRandomContact() {
         Cursor managedCursor = context.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        Set<String> blocked = preferences.getStringSet("block_contacts", new HashSet<String>());
         int size = managedCursor.getCount();
 
-        boolean found = false;
+        int tries = 0;
         String[] results = new String[2];
         Random rnd = new Random();
-        int index = rnd.nextInt(size);
-        managedCursor.moveToPosition(index);
-        results[0] = managedCursor.getString(managedCursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
-        results[1] = managedCursor.getString(managedCursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI));
+
+        //TODO: this is super inefficient!
+        while(tries++ < size) {
+            int index = rnd.nextInt(size);
+            managedCursor.moveToPosition(index);
+
+            results[0] = managedCursor.getString(managedCursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
+            results[1] = managedCursor.getString(managedCursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI));
+
+            if(blocked.contains(results[0])) {
+                continue;
+            } else {
+                break;
+            }
+
+        }
         return results;
     }
 

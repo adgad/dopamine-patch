@@ -9,6 +9,15 @@
             app:defaultValue="10"
             app:showSeekBarValue="true"/>
 
+        <com.adgad.dopamine.ContactListPreference
+            app:key="block_contacts"
+            app:title="Blocked contacts"
+            app:defaultValue="@array/empty_array"
+            />
+
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Your Feed">
+
         <EditTextPreference app:key="latestPost" app:title="Post into the void" app:useSimpleSummaryProvider="true"/>
 
     </PreferenceCategory>

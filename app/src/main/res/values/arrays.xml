@@ -34,4 +34,6 @@
         <item>You\'re the best</item>
         <item>This was a great post</item>
     </string-array>
+
+    <string-array name="empty_array"></string-array>
 </resources>
