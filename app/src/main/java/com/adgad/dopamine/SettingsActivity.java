@@ -26,14 +26,16 @@ public class SettingsActivity extends AppCompatActivity implements ActivityCompa
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_activity);
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.settings, new SettingsFragment())
-                .commit();
+
         if(checkPermissions()) {
             DopeBuilder dopeBuilder = new DopeBuilder(this);
             dopeBuilder.sendDopamineHit(60000);
         }
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.settings, new SettingsFragment())
+                .commit();
+
     }
 
     private boolean checkPermissions() {

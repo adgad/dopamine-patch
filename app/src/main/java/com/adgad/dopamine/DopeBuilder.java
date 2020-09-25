@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -20,12 +21,23 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 
+import androidx.annotation.NonNull;
 import androidx.preference.PreferenceManager;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.label.ImageLabel;
+import com.google.mlkit.vision.label.ImageLabeler;
+import com.google.mlkit.vision.label.ImageLabeling;
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -38,6 +50,12 @@ public class DopeBuilder {
     private Context context;
     private Random generator = new Random();
 
+    private ImageLabelerOptions options =
+     new ImageLabelerOptions.Builder()
+         .setConfidenceThreshold(0.7f)
+         .build();
+    private ImageLabeler labeler = ImageLabeling.getClient(options);
+
     private static int ONE_DAY = 86400000;
     private static final String CAMERA_IMAGE_BUCKET_NAME =
             Environment.getExternalStorageDirectory().toString()
@@ -45,8 +63,9 @@ public class DopeBuilder {
     public static final String CAMERA_IMAGE_BUCKET_ID =
             getBucketId(CAMERA_IMAGE_BUCKET_NAME);
 
+    //Added image_reply multiple times so its more likely to appear
     private static final String[] NOTIFICATION_TYPES = new String[]{
-        "like", "retweet", "image_like", "tweet_reply", "post_reply", "image_reply"
+        "like", "retweet", "image_like", "tweet_reply", "post_reply", "image_reply", "image_reply", "image_reply"
     };
 
     String[] instaReplies;
@@ -70,54 +89,107 @@ public class DopeBuilder {
     public void sendDopamineHit() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         int frequency = preferences.getInt("frequency", 20);
-        String latestPost = preferences.getString("latestPost", null);
-
-        String[] contact = this.getRandomContact();
         int delay = generator.nextInt(ONE_DAY / frequency);
-        Log.d("dopamine", frequency + " " + delay);
-
-        this.scheduleNotification(this.getNotification(contact[0], contact[1], latestPost), delay);
+        sendDopamineHit(delay);
     }
 
-    public void sendDopamineHit(int delay) {
+    public void sendDopamineHit(final int delay) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String latestPost = preferences.getString("latestPost", null);
-        String[] contact = this.getRandomContact();
-        this.scheduleNotification(this.getNotification(contact[0], contact[1], latestPost), delay);
+        final String type = NOTIFICATION_TYPES[this.generator.nextInt(NOTIFICATION_TYPES.length)];
+        final String latestPost = preferences.getString("latestPost", null);
+        final String[] contact = this.getRandomContact();
+
+        if(type.contains("image")) {
+
+            final File imageFile = getRandomFileFromGallery();
+            if(imageFile != null && imageFile.exists()) {
+                final Bitmap image = getBitmapFromFile(imageFile);
+                OnSuccessListener onSuccess = new OnSuccessListener<List<ImageLabel>>() {
+                    @Override
+                    public void onSuccess(List<ImageLabel> labels) {
+                        ImageLabel randomLabel = labels.get(DopeBuilder.this.generator.nextInt(labels.size()));
+                        String imageLabel = randomLabel.getText();
+
+                        float confidence = randomLabel.getConfidence();
+                        Log.d("dopamine", "ImageLabel - " + imageLabel + ": " + confidence);
+                        Notification notification = DopeBuilder.this.getImageNotification(type, contact[0], contact[1], image, imageLabel);
+                        DopeBuilder.this.scheduleNotification(notification, delay);
+                    }
+                };
+
+                OnFailureListener onFailure = new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Task failed with an exception
+                        // ...
+                        Log.d("dopamine", "image labelling error");
+                        Notification notification = DopeBuilder.this.getImageNotification(type, contact[0], contact[1], image, null);
+                        DopeBuilder.this.scheduleNotification(notification, delay);
+                    }
+                };
+
+                getImageLabel(imageFile, onSuccess, onFailure);
+
+            } else {
+                //Can't find image - proceed without one
+                Notification notification = DopeBuilder.this.getNotification(type, contact[0], contact[1], latestPost);
+                DopeBuilder.this.scheduleNotification(notification, delay);
+            }
+        } else {
+            //Non-image types
+            Notification notification = DopeBuilder.this.getNotification(type, contact[0], contact[1], latestPost);
+            DopeBuilder.this.scheduleNotification(notification, delay);
+        }
     }
 
-    private Bitmap getRecentImage() {
-            final String[] projection = { MediaStore.Images.Media.DATA };
-            final String selection = MediaStore.Images.Media.BUCKET_ID + " = ?";
-            final String[] selectionArgs = { CAMERA_IMAGE_BUCKET_ID };
-            final Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    projection,
-                    selection,
-                    selectionArgs,
-                    null);
-            ArrayList<String> result = new ArrayList<String>(cursor.getCount());
-            if (cursor.moveToFirst()) {
-                final int dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                do {
-                    final String data = cursor.getString(dataColumn);
-                    result.add(data);
-                } while (cursor.moveToNext());
-            }
-            cursor.close();
-
-            if(result.size() > 0) {
-                String fileName = result.get(this.generator.nextInt(result.size()));
-                File imgFile = new File(fileName);
-                if(imgFile.exists()){
-                    BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-                    bmOptions.inSampleSize = 2;
-                    bmOptions.inJustDecodeBounds = false;
-                    Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath(),bmOptions);
-                    return bitmap;
-                }
-            }
-            return null;
+    private File getRandomFileFromGallery() {
+        File imgFile = null;
+        final String[] projection = { MediaStore.Images.Media.DATA };
+        final String selection = MediaStore.Images.Media.BUCKET_ID + " = ?";
+        final String[] selectionArgs = { CAMERA_IMAGE_BUCKET_ID };
+        final Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null);
+        ArrayList<String> result = new ArrayList<String>(cursor.getCount());
+        if (cursor.moveToFirst()) {
+            final int dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            do {
+                final String data = cursor.getString(dataColumn);
+                result.add(data);
+            } while (cursor.moveToNext());
         }
+        cursor.close();
+
+        if(result.size() > 0) {
+            String fileName = result.get(this.generator.nextInt(result.size()));
+            imgFile = new File(fileName);
+        }
+        return imgFile;
+    }
+
+    private Bitmap getBitmapFromFile(File imgFile) {
+
+
+            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+            bmOptions.inSampleSize = 2;
+            bmOptions.inJustDecodeBounds = false;
+            Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath(),bmOptions);
+            return bitmap;
+    }
+
+    private void getImageLabel(File imgFile, OnSuccessListener onSuccessListener, OnFailureListener onFailureListener) {
+        try {
+            InputImage image = InputImage.fromFilePath(context, Uri.fromFile(imgFile));
+            labeler.process(image)
+                    .addOnSuccessListener(onSuccessListener)
+                    .addOnFailureListener(onFailureListener);
+        } catch (IOException e) {
+            e.printStackTrace();
+            onFailureListener.onFailure(e);
+        }
+    }
 
 
 
@@ -163,9 +235,8 @@ public class DopeBuilder {
     }
 
 
-    private Notification getNotification(String name, String userImage, String latestPost) {
+    private Notification getNotification(String type, String name, String userImage, String latestPost) {
 
-        String type = NOTIFICATION_TYPES[this.generator.nextInt(NOTIFICATION_TYPES.length)];
         Notification.Builder builder = new Notification.Builder(this.context);
         String text;
         String actor = name;
@@ -195,11 +266,6 @@ public class DopeBuilder {
                 }
                 builder.setContentText("retweeted your tweet");
                 break;
-            case "image_like":
-                builder.setContentTitle(actor);
-                builder.setContentText("liked your photo");
-                builder.setSmallIcon(R.drawable.ic_favorite);
-                break;
             case "tweet_reply":
                 builder.setContentTitle(name);
                 builder.setSmallIcon(R.drawable.comment);
@@ -218,11 +284,59 @@ public class DopeBuilder {
                         .bigText(text));
                 builder.setContentText(text);
                 break;
-            case "image_reply":
+        }
 
+        if(userImage != null) {
+            Uri imageUri = Uri.parse(userImage);
+            Bitmap icon = null;
+            try {
+                icon = MediaStore.Images.Media.getBitmap(this.context.getContentResolver(), imageUri);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            builder.setLargeIcon(icon);
+        }
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setChannelId("dopamine_hit");
+        }
+
+        return builder.build();
+    }
+
+    public Bitmap getResizedBitmap(Bitmap bm, int width ) {
+        float aspectRatio = bm.getWidth() /
+                (float) bm.getHeight();
+        int height = Math.round(width / aspectRatio);
+
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                bm, width, height, false);
+
+        return resizedBitmap;
+    }
+
+    private Notification getImageNotification(String type, String name, String userImage, Bitmap recentImage, String recentImageLabel) {
+
+        Notification.Builder builder = new Notification.Builder(this.context);
+        String text;
+        String actor = name;
+        int others = this.generator.nextInt(13) - 7;
+        if(others > 0) {
+            actor += " and " + others + " others";
+        }
+
+
+        switch(type) {
+            case "image_like":
+                builder.setContentTitle(actor);
+                builder.setContentText("liked your photo");
+                builder.setSmallIcon(R.drawable.ic_favorite);
+                break;
+            case "image_reply":
                 builder.setContentTitle(name);
                 builder.setSmallIcon(R.drawable.comment);
-                text = "commented: "  + instaReplies[this.generator.nextInt(instaReplies.length)];
+                text = "commented: "  + instaReplies[this.generator.nextInt(instaReplies.length)].replace("%s", recentImageLabel != null ? " " + recentImageLabel.toLowerCase() : " photo");
                 builder.setStyle(new Notification.BigTextStyle()
                         .bigText(text));
                 builder.setContentText(text);
@@ -240,14 +354,9 @@ public class DopeBuilder {
             builder.setLargeIcon(icon);
         }
 
-        if(type.contains("image")) {
-            Bitmap recentImage = getRecentImage();
-
             builder.setStyle(new Notification.BigPictureStyle()
-                    .bigPicture(recentImage));
+                    .bigPicture(getResizedBitmap(recentImage, 500)));
 
-
-        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setChannelId("dopamine_hit");

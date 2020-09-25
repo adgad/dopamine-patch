@@ -4,18 +4,21 @@
         <item>Wow!</item>
         <item>🔥</item>
         <item>😍</item>
-        <item>Cool picture!</item>
+        <item>Cool photo!</item>
+        <item>Cool%s!</item>
         <item>This looks amazing!</item>
-        <item>You look great!!</item>
-        <item>Absolutely stunning!</item>
-        <item>Gorgeous!!</item>
+        <item>This%s looks amazing!</item>
+        <item>Absolutely stunning%s!</item>
+        <item>Gorgeous%s!!</item>
         <item>Beautiful 😍</item>
         <item>Keep doing this! Amazing. Go you lovely xoxo</item>
         <item>Love thissss 🙌🙌🙌</item>
-        <item>check ur dms</item>
+        <item>check ur DMs</item>
         <item>YASSS KWEEN</item>
-        <item>Incredible</item>
-        <item>Great photo, hit me up for a collab</item>
+        <item>Incredible%s</item>
+        <item>Great%s, hit me up for a collab</item>
+        <item>Amazing%s</item>
+
     </string-array>
 
     <string-array name="text_replies">

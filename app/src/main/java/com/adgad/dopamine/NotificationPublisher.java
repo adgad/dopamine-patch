@@ -8,7 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-public class NotificationPublisher extends BroadcastReceiver {
+import androidx.legacy.content.WakefulBroadcastReceiver;
+
+public class NotificationPublisher extends WakefulBroadcastReceiver {
 
     public static String NOTIFICATION_ID = "notification-id";
     public static String NOTIFICATION = "notification";
