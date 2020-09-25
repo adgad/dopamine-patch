@@ -45,6 +45,8 @@ import static java.util.Map.entry;
 
 public class DopeBuilder {
 
+    public static final int ONE_DAY = 86400000;
+//    public static final int ONE_DAY = 86400;
 
     // variable to hold context
     private Context context;
@@ -56,7 +58,6 @@ public class DopeBuilder {
          .build();
     private ImageLabeler labeler = ImageLabeling.getClient(options);
 
-    private static int ONE_DAY = 86400000;
     private static final String CAMERA_IMAGE_BUCKET_NAME =
             Environment.getExternalStorageDirectory().toString()
                     + "/DCIM/Camera";
@@ -107,13 +108,14 @@ public class DopeBuilder {
                 OnSuccessListener onSuccess = new OnSuccessListener<List<ImageLabel>>() {
                     @Override
                     public void onSuccess(List<ImageLabel> labels) {
-                        ImageLabel randomLabel = labels.get(DopeBuilder.this.generator.nextInt(labels.size()));
-                        String imageLabel = randomLabel.getText();
-
-                        float confidence = randomLabel.getConfidence();
-                        Log.d("dopamine", "ImageLabel - " + imageLabel + ": " + confidence);
-                        Notification notification = DopeBuilder.this.getImageNotification(type, contact[0], contact[1], image, imageLabel);
-                        DopeBuilder.this.scheduleNotification(notification, delay);
+                        String imageLabel = null;
+                        if(labels.size() > 0) {
+                            ImageLabel randomLabel = labels.get(DopeBuilder.this.generator.nextInt(labels.size()));
+                            imageLabel = randomLabel.getText();
+                            float confidence = randomLabel.getConfidence();
+                            Log.d("dopamine", "ImageLabel - " + imageLabel + ": " + confidence);
+                        }
+                        DopeBuilder.this.scheduleImageNotification(type, contact[0], contact[1], imageFile.getAbsolutePath(), imageLabel, delay);
                     }
                 };
 
@@ -123,8 +125,7 @@ public class DopeBuilder {
                         // Task failed with an exception
                         // ...
                         Log.d("dopamine", "image labelling error");
-                        Notification notification = DopeBuilder.this.getImageNotification(type, contact[0], contact[1], image, null);
-                        DopeBuilder.this.scheduleNotification(notification, delay);
+                        DopeBuilder.this.scheduleImageNotification(type, contact[0], contact[1], imageFile.getAbsolutePath(), null, delay);
                     }
                 };
 
@@ -132,13 +133,11 @@ public class DopeBuilder {
 
             } else {
                 //Can't find image - proceed without one
-                Notification notification = DopeBuilder.this.getNotification(type, contact[0], contact[1], latestPost);
-                DopeBuilder.this.scheduleNotification(notification, delay);
+                DopeBuilder.this.scheduleNotification(type, contact[0], contact[1], latestPost, delay);
             }
         } else {
             //Non-image types
-            Notification notification = DopeBuilder.this.getNotification(type, contact[0], contact[1], latestPost);
-            DopeBuilder.this.scheduleNotification(notification, delay);
+            DopeBuilder.this.scheduleNotification(type, contact[0], contact[1], latestPost, delay);
         }
     }
 
@@ -170,8 +169,6 @@ public class DopeBuilder {
     }
 
     private Bitmap getBitmapFromFile(File imgFile) {
-
-
             BitmapFactory.Options bmOptions = new BitmapFactory.Options();
             bmOptions.inSampleSize = 2;
             bmOptions.inJustDecodeBounds = false;
@@ -221,11 +218,34 @@ public class DopeBuilder {
         return results;
     }
 
-    private void scheduleNotification(Notification notification, int delay) {
+    private void scheduleNotification(String type, String name, String userImage, String latestPost, int delay) {
 
         Intent notificationIntent = new Intent(this.context, NotificationPublisher.class);
         notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_ID, this.generator.nextInt(100));
-        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION, notification);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_TYPE, type);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_NAME, name);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_USER_IMAGE, userImage);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_LATEST_POST, latestPost);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this.context, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        long futureInMillis = SystemClock.elapsedRealtime() + delay;
+        AlarmManager alarmManager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, futureInMillis, pendingIntent);
+
+    }
+
+    private void scheduleImageNotification(String type, String name, String userImage, String recentImageFile, String recentImageLabel, int delay) {
+
+        Intent notificationIntent = new Intent(this.context, NotificationPublisher.class);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_ID, this.generator.nextInt(100));
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_TYPE, type);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_NAME, name);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_USER_IMAGE, userImage);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_RECENT_IMAGE_FILE, recentImageFile);
+        notificationIntent.putExtra(NotificationPublisher.NOTIFICATION_RECENT_IMAGE_LABEL, recentImageLabel);
+
+
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this.context, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         long futureInMillis = SystemClock.elapsedRealtime() + delay;
@@ -235,7 +255,8 @@ public class DopeBuilder {
     }
 
 
-    private Notification getNotification(String type, String name, String userImage, String latestPost) {
+
+    public Notification getNotification(String type, String name, String userImage, String latestPost) {
 
         Notification.Builder builder = new Notification.Builder(this.context);
         String text;
@@ -316,9 +337,11 @@ public class DopeBuilder {
         return resizedBitmap;
     }
 
-    private Notification getImageNotification(String type, String name, String userImage, Bitmap recentImage, String recentImageLabel) {
+    public Notification getImageNotification(String type, String name, String userImage, String recentImageFileName, String recentImageLabel) {
 
+        File recentImageFile = new File(recentImageFileName);
         Notification.Builder builder = new Notification.Builder(this.context);
+        Bitmap recentImage = this.getBitmapFromFile(recentImageFile);
         String text;
         String actor = name;
         int others = this.generator.nextInt(13) - 7;

@@ -28,15 +28,22 @@ public class SettingsActivity extends AppCompatActivity implements ActivityCompa
         setContentView(R.layout.settings_activity);
 
         if(checkPermissions()) {
-            DopeBuilder dopeBuilder = new DopeBuilder(this);
-            dopeBuilder.sendDopamineHit(60000);
+            initialise();
         }
+
+
+    }
+
+    private void initialise() {
+        DopeBuilder dopeBuilder = new DopeBuilder(this);
+        dopeBuilder.sendDopamineHit(60000);
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.settings, new SettingsFragment())
                 .commit();
 
     }
+
 
     private boolean checkPermissions() {
         int result;
@@ -68,8 +75,7 @@ public class SettingsActivity extends AppCompatActivity implements ActivityCompa
             if (grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if(checkPermissions()) {
-                    DopeBuilder dopeBuilder = new DopeBuilder(this);
-                    dopeBuilder.sendDopamineHit(60000);
+                   initialise();
                 }
             }
             return;
